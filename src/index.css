@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { 
+    font-family: 'Inter', sans-serif; 
+    background-color: #f7fafc; 
+    margin: 0;
+}
+
+.rainbow-active {
+    position: relative;
+    z-index: 1;
+    background: #1a202c;
+    color: white;
+    border: 2px solid transparent;
+}
+.rainbow-active::before {
+    content: '';
+    position: absolute;
+    top: -2px; left: -2px; right: -2px; bottom: -2px;
+    background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+    background-size: 400%;
+    border-radius: 0.5rem;
+    z-index: -1;
+    animation: rainbow-move 3s linear infinite;
+}
+@keyframes rainbow-move {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
+}
+
+.inline-math {
+    display: inline-block;
+    background-color: #eef2ff;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin: 0 4px;
+    border: 1px solid #c7d2fe;
+    vertical-align: baseline;
+}
+
+.loader {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #3498db;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.halkali-title {
+    animation: text-color-change 6s linear infinite;
+}
+@keyframes text-color-change {
+    0% {color: #4f46e5;}
+    25% {color: #d946ef;}
+    50% {color: #14b8a6;}
+    75% {color: #f97316;}
+    100% {color: #4f46e5;}
+}
+
+.answer-button {
+    transition: all 0.2s ease-in-out;
+}
+.answer-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.feedback-box {
+    position: relative;
+    z-index: 1;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1e1b4b, #4c1d95);
+    color: white;
+    padding: 20px;
+    overflow: hidden;
+}
+.feedback-box::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    z-index: -2;
+    margin: -2px;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #818cf8, #c084fc, #f0abfc, #c084fc, #818cf8);
+    background-size: 400% 400%;
+    animation: animated-border 4s ease-in-out infinite;
+}
+@keyframes animated-border {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* --- YENİ GİRİŞ EKRANI STİLLERİ --- */
+.login-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    background: linear-gradient(45deg, #4c1d95, #4f46e5, #7c3aed, #2563eb);
+    background-size: 400% 400%;
+    animation: gradient-animation 15s ease infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes gradient-animation {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.bubbles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    padding: 0;
+    margin: 0;
+}
+
+.bubbles li {
+    position: absolute;
+    list-style: none;
+    display: block;
+    background: rgba(255, 255, 255, 0.15);
+    animation: bubble-animation 20s linear infinite;
+    bottom: -200px;
+    border-radius: 50%;
+}
+
+.bubbles li:nth-child(1) { left: 25%; width: 80px; height: 80px; animation-delay: 0s; animation-duration: 15s; }
+.bubbles li:nth-child(2) { left: 10%; width: 20px; height: 20px; animation-delay: 2s; animation-duration: 10s; }
+.bubbles li:nth-child(3) { left: 70%; width: 30px; height: 30px; animation-delay: 4s; animation-duration: 22s; }
+.bubbles li:nth-child(4) { left: 40%; width: 60px; height: 60px; animation-delay: 0s; animation-duration: 16s; }
+.bubbles li:nth-child(5) { left: 65%; width: 25px; height: 25px; animation-delay: 0s; animation-duration: 18s; }
+.bubbles li:nth-child(6) { left: 75%; width: 110px; height: 110px; animation-delay: 3s; animation-duration: 12s; }
+.bubbles li:nth-child(7) { left: 35%; width: 150px; height: 150px; animation-delay: 7s; animation-duration: 25s; }
+.bubbles li:nth-child(8) { left: 50%; width: 25px; height: 25px; animation-delay: 15s; animation-duration: 35s; }
+.bubbles li:nth-child(9) { left: 20%; width: 15px; height: 15px; animation-delay: 2s; animation-duration: 28s; }
+.bubbles li:nth-child(10) { left: 85%; width: 160px; height: 160px; animation-delay: 0s; animation-duration: 11s; }
+.bubbles li:nth-child(11) { left: 5%; width: 40px; height: 40px; animation-delay: 1s; animation-duration: 20s; }
+.bubbles li:nth-child(12) { left: 90%; width: 20px; height: 20px; animation-delay: 5s; animation-duration: 14s; }
+.bubbles li:nth-child(13) { left: 15%; width: 50px; height: 50px; animation-delay: 3s; animation-duration: 19s; }
+.bubbles li:nth-child(14) { left: 60%; width: 70px; height: 70px; animation-delay: 8s; animation-duration: 24s; }
+.bubbles li:nth-child(15) { left: 45%; width: 35px; height: 35px; animation-delay: 10s; animation-duration: 30s; }
+
+
+@keyframes bubble-animation {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-120vh) rotate(720deg);
+        opacity: 0;
+    }
+}
+
+.login-form-container {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+    z-index: 1;
+    position: relative;
+    padding: 2rem;
+    width: 100%;
+    max-width: 450px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.login-form-container::before {
+    content: '';
+    position: absolute;
+    top: -2px; left: -2px;
+    right: -2px; bottom: -2px;
+    background: linear-gradient(45deg, #ec4899, #8b5cf6, #3b82f6, #ec4899);
+    background-size: 400% 400%;
+    border-radius: 22px;
+    z-index: -1;
+    animation: animated-gradient-border 6s linear infinite;
+}
+
+@keyframes animated-gradient-border {
+   0% { background-position: 0% 50%; }
+   50% { background-position: 100% 50%; }
+   100% { background-position: 0% 50%; }
+}
