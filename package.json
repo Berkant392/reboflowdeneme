@@ -1,0 +1,8 @@
+{
+  "name": "soru-cozucu-netlify-functions",
+  "version": "1.0.0",
+  "description": "Netlify functions for the Soru Cozucu app.",
+  "dependencies": {
+    "node-fetch": "^2.6.1"
+  }
+}
