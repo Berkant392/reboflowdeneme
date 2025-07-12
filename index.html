@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Soru Çözücü</title>
-    <!-- Stil ve Kütüphane Dosyaları -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
@@ -22,6 +21,8 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .halkali-title { animation: text-color-change 6s linear infinite; }
         @keyframes text-color-change { 0% {color: #4f46e5;} 25% {color: #d946ef;} 50% {color: #14b8a6;} 75% {color: #f97316;} 100% {color: #4f46e5;} }
+        .answer-button { transition: all 0.2s ease-in-out; }
+        .answer-button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
@@ -30,8 +31,7 @@
         const { useState, useRef, useEffect } = React;
         const { createRoot } = ReactDOM;
 
-        // --- DÜZELTİLMİŞ KULLANICI VERİTABANI ---
-        // Orijinal listenin tamamı geri eklendi.
+        // --- TAM KULLANICI LİSTESİ ---
         const credentials = new Map([
             ['7gT3jP', 'kLp9aV'], ['aBv4kS', '8rZ2mN'], ['cD9xWq', '5jH7fE'], ['eF6zYp', '2bC3dR'], ['gH1vUo', '9sX8wT'],
             ['iJ5tRn', '4mK1qL'], ['lM2sQp', '7nB6vC'], ['nP8rVo', '3dF4zG'], ['qR4tYn', '1hJ5kM'], ['sT9wXu', '6pL2sB'],
@@ -82,7 +82,6 @@
             ['Uj3m7k', 'l9o1p4'], ['Yt5r2e', 'w6q8a1'], ['Ts1a4z', 'e5d7c9'], ['Rg9f6c', 'v3b5n8'], ['Fv2b5n', 'm1k3j6'],
             ['Dc4r7f', 't8g2y5'], ['Sw6a9q', 'z1x3c5'], ['Az8s5x', 'd2f4g7']
         ]);
-        // --- BİTİŞ ---
 
         const UniversalMathRenderer = ({ text }) => {
             const containerRef = useRef(null);
@@ -136,9 +135,6 @@
             const [loadingMessage, setLoadingMessage] = useState('');
             const [error, setError] = useState('');
             const [stage, setStage] = useState('upload'); 
-            const [showFeedback, setShowFeedback] = useState(false);
-            const [showReSolvePrompt, setShowReSolvePrompt] = useState(false);
-            const [feedbackMessage, setFeedbackMessage] = useState('');
             const fileInputRef = useRef(null);
 
             const subjects = ['Matematik', 'Fizik', 'Kimya', 'Biyoloji', 'Tarih', 'Coğrafya', 'Edebiyat', 'Türkçe'];
@@ -156,172 +152,60 @@
                 }
             };
 
-            const triggerFileSelect = () => fileInputRef.current.click();
-
-            const analyzeImageWithRoboflow = async (base64Image) => {
-                try {
-                    const response = await fetch('/.netlify/functions/analyze-image', {
-                        method: "POST",
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ imageBase64: base64Image })
-                    });
-                    if (!response.ok) throw new Error("Roboflow fonksiyon isteği başarısız oldu.");
-                    const data = await response.json();
-                    if (data.predictions && data.predictions.length > 0) {
-                        const summary = data.predictions.reduce((acc, pred) => {
-                            acc[pred.class] = (acc[pred.class] || 0) + 1;
-                            return acc;
-                        }, {});
-                        const summaryText = Object.entries(summary)
-                            .map(([key, value]) => `${value} adet '${key}'`)
-                            .join(', ');
-                        return `Bu resimde bir ön analiz yapıldı ve şu nesneler tespit edildi: ${summaryText}.`;
-                    }
-                    return null;
-                } catch (error) {
-                    console.error("Netlify/Roboflow fonksiyonu hatası:", error);
-                    return null;
+            const triggerFileSelect = () => {
+                if (fileInputRef.current) {
+                    fileInputRef.current.click();
                 }
             };
-
-            const callGeminiAPI = async (prompt) => {
-                if (!imageBase64) { 
-                    setError('Lütfen önce bir resim dosyası seçin.'); 
-                    return null; 
-                }
+            
+            const startFullProcess = async (userAnswer) => {
+                if(!selectedSubject) { setError('Lütfen önce bir ders seçin.'); return; }
+                
+                resetSolutionState(true);
                 setIsLoading(true);
+                setStage('processing');
+                setLoadingMessage('Soru analiz ediliyor ve çözülüyor...');
                 setError('');
                 
                 try {
-                    const response = await fetch('/.netlify/functions/analyze-with-gemini', {
+                    const response = await fetch('/.netlify/functions/analyze-and-solve', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ prompt, imageBase64 })
+                        body: JSON.stringify({
+                            imageBase64,
+                            subject: selectedSubject,
+                            userAnswer
+                        })
                     });
 
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || 'Gemini fonksiyonu sunucu hatası.');
-                    }
-                    
                     const result = await response.json();
-                    return result.text;
 
+                    if (!response.ok) {
+                        throw new Error(result.error || 'Bilinmeyen bir sunucu hatası oluştu.');
+                    }
+
+                    setAnalysis(result.analysis || 'Analiz oluşturulamadı.');
+                    setSimplifiedQuestion(result.simplification || '');
+                    setSolution(result.solution || 'Çözüm oluşturulamadı.');
+                    setRecommendations(result.recommendations || '');
+
+                    setStage('solution_done'); 
                 } catch (err) {
-                    setError(err.message || 'Bilinmeyen bir hata oluştu.');
-                    return null;
+                    console.error("İşlem sırasında hata:", err);
+                    setError(err.message);
+                    setStage('subject_selected');
                 } finally {
                     setIsLoading(false);
-                    setLoadingMessage('');
-                }
-            };
-
-            const handleAnalysis = async () => {
-                if(!selectedSubject) { setError('Lütfen önce bir ders seçin.'); return; }
-                setStage('analyzing');
-                
-                setLoadingMessage('Görsel ön analizi yapılıyor...');
-                const roboflowAnalysisText = await analyzeImageWithRoboflow(imageBase64);
-                
-                setLoadingMessage('Detaylı analiz ediliyor...');
-                
-                let prompt = `Sen bir ${selectedSubject} uzmanısın. Bu resimdeki ${selectedSubject} sorusunu analiz et.`;
-
-                if (roboflowAnalysisText) {
-                    prompt += `\n\nSANA EK BİLGİ: Soruyu daha iyi anlaman için bir görüntü işleme modeli tarafından yapılan ön analizin sonuçları şunlardır: "${roboflowAnalysisText}". Lütfen bu bilgiyi de dikkate alarak analizini yap.`;
-                }
-
-                prompt += `\n\nÖzellikle şekilli veya grafikli sorularda, önce görseldeki tüm verileri (noktalar, açılar, uzunluklar, denklemler vb.) dikkatlice çıkar. Analizin kısa, net ve bir lise öğrencisinin anlayacağı dilde olsun. Çözüme dair ipucu verme. Cevabını '### Analiz:' başlığı altında, **Verilenler:** ve **İstenenler:** etiketlerini markdown formatında kalın yazarak oluştur. Maddelerin başına '👉' emojisi koy. **TÜM** matematiksel ifadeleri, sayıları, değişkenleri ve sembolleri istisnasız bir şekilde tek dolar '$...$' veya çift dolar '$$...$$' arasına al. Analizin sonuna mutlaka şu cümleyi ekle: "Analiz tamamlandı. Çözümü görmek için 4. Adım: Çözüm butonuna tıklayabilirsin."`;
-                
-                const analysisResult = await callGeminiAPI(prompt);
-                
-                if (analysisResult) { 
-                    setAnalysis(analysisResult.replace(/### Analiz:/g, '').trim()); 
-                    setStage('analysis_done'); 
-                } else { 
-                    setStage('subject_selected'); 
-                }
-            };
-            
-            const handleSolution = async (isReSolve = false) => {
-                 if(!selectedSubject) { setError('Lütfen önce bir ders seçin.'); return; }
-                setStage('solving');
-                setLoadingMessage(isReSolve ? 'Yeniden çözülüyor...' : 'Çözüm oluşturuluyor...');
-                let prompt = `Sen, YKS ve lise müfredatına yüzde yüz hakim, konuların inceliklerini bilen (örneğin türevde çift katlı kökün ekstremum olmaması gibi) eşi benzeri olmayan bir ${selectedSubject} öğretmenisin. Bu resimdeki soruyu çöz.
-**ÖNCELİK 1: Soruyu Basitleştirme.** İstisnasız her soru için, önce '### Soruyu Basitleştirelim:' başlığı altında sorunun özünü, öğrencinin anlayacağı şekilde yeniden yaz.
-**ÖNCELİK 2: Çözüm.**
-**Kesin Kurallar:**
-1.  **En Pratik Yol:** Soruyu çözmek için lise öğrencisi seviyesine en uygun, en pratik ve en kolay anlaşılır yöntemi seç.
-2.  **Doğruluk:** Çözümün kesinlikle doğru olsun.
-3.  **Anlaşılırlık:** Çözümü adım adım, kısa ve net bir şekilde açıkla. Gereksiz yere uzatma.
-4.  **Format:** Cevabını iki bölümde ver:
-    * '### Çözüm:' başlığı altında metin çözümünü yaz. **TÜM** matematiksel ifadeleri, sayıları, değişkenleri ve sembolleri (örneğin $f'(x)$, $1 \\neq -1$, $x=5$) istisnasız bir şekilde tek dolar '$...$' veya çift dolar '$$...$$' arasına al. Bu kuralın hiçbir istisnası yoktur.
-    * '### Tavsiyeler:' başlığı altında, bu soruyla ilgili 2-3 madde halinde, samimi bir öğretmen gibi, öğrencinin gelecekte benzer soruları çözmesine yardımcı olacak tavsiyeler ver. Tavsiyelerdeki maddelerin başına '💡' emojisi koy.`;
-
-                if(isReSolve) {
-                    prompt = `Daha önceki çözümüm hatalı veya eksik olarak işaretlendi. Az önce yaptığım detaylı analizi dikkate alarak, bu resimdeki ${selectedSubject} sorusunu **önceki hatamı tekrarlamayacak şekilde, çok daha dikkatli, anlaşılır ve basite indirgeyerek** yeniden çöz. Adımları net bir şekilde açıkla ve doğru sonuca ulaş.` + prompt;
-                }
-                
-                const resultText = await callGeminiAPI(prompt);
-                
-                if (resultText) {
-                    const simplifiedPart = resultText.split('### Çözüm:')[0];
-                    const solutionAndRest = resultText.split('### Çözüm:')[1] || '';
-                    
-                    if(simplifiedPart.includes('### Soruyu Basitleştirelim:')){
-                        setSimplifiedQuestion(simplifiedPart.replace('### Soruyu Basitleştirelim:', '').trim());
-                    } else {
-                        setSimplifiedQuestion('');
-                    }
-
-                    const solutionParts = solutionAndRest.split('### Tavsiyeler:');
-                    setSolution(solutionParts[0].trim());
-                    if (solutionParts.length > 1) {
-                        setRecommendations(solutionParts[1].trim());
-                    }
-                    setStage('solution_done'); 
-                    setShowFeedback(true);
-                } else { 
-                    setStage('analysis_done'); 
-                }
-            };
-            
-            const handleReSolve = async () => {
-                setShowReSolvePrompt(false);
-                resetSolutionState(true); 
-                setLoadingMessage('Hata anlaşılıyor, yeniden ve daha detaylı analiz ediliyor...');
-                
-                const reAnalysisPrompt = `Sen bir ${selectedSubject} uzmanısın ve bir önceki çözümün hatalı olarak işaretlendi. Bu resimdeki soruyu şimdi **çok daha dikkatli ve detaylı bir şekilde** yeniden analiz et. Soruda verilen tüm bilgileri, sayısal değerleri, birimleri ve koşulları atlamadan, açık ve net bir şekilde listele. Özellikle şekilli sorularda, şekildeki tüm detayları (açılar, uzunluklar, noktalar) dikkate al. Sorunun tam olarak ne istediğini belirt. **KESİNLİKLE çözüm yapma.** Cevabını '### Analiz:' başlığı altında sun.`;
-                const analysisResult = await callGeminiAPI(reAnalysisPrompt);
-
-                if (analysisResult) {
-                    setAnalysis(analysisResult.replace(/### Analiz:/g, '').trim());
-                    await handleSolution(true);
-                } else {
-                    setError("Yeniden analiz sırasında bir hata oluştu.");
-                    setStage('subject_selected');
                 }
             };
             
             const resetSolutionState = (keepSubject = false) => {
-                setAnalysis('');
-                setSolution('');
-                setSimplifiedQuestion('');
-                setRecommendations('');
+                setAnalysis(''); setSolution(''); setSimplifiedQuestion(''); setRecommendations('');
                 setError('');
-                setShowFeedback(false);
-                setShowReSolvePrompt(false);
-                setFeedbackMessage('');
-                if (!keepSubject) {
-                    setSelectedSubject(null);
-                }
+                if (!keepSubject) { setSelectedSubject(null); }
             };
-            
             const resetApp = () => {
-                setImage(null);
-                setImageBase64('');
-                resetSolutionState();
-                setStage('upload');
+                setImage(null); setImageBase64(''); resetSolutionState(); setStage('upload');
                 if(fileInputRef.current) fileInputRef.current.value = "";
             };
 
@@ -331,33 +215,34 @@
                         <p className="halkali-title text-lg font-semibold mb-2">Halkalı Fen Bilimleri Merkezi</p>
                         <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500">Soru Çözücü</h1>
                         <p className="text-base font-semibold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent mt-2">Berkant Hoca</p>
-                        <p className="text-gray-600 mt-4 text-sm sm:text-base">Sorunun fotoğrafını yükle, dersini seç ve çözümü gör!</p>
                     </header>
                     
                     {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4" role="alert">{error}</div>}
                     
                     <div className="flex flex-col gap-6">
-                        <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start">
-                            <div className="w-full md:w-1/2 flex flex-col items-center justify-center bg-gray-50 p-4 sm:p-6 rounded-lg border-2 border-dashed h-full">
-                                <input type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef} className="hidden" />
-                                {image ? (
-                                    <img src={image} alt="Yüklenen Soru" className="max-w-full max-h-48 sm:max-h-60 mx-auto rounded-lg shadow-md" />
-                                ) : (
-                                    <div className="text-center py-8 cursor-pointer w-full" onClick={triggerFileSelect}>
-                                        <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                        <p className="mt-2 text-sm font-medium text-gray-700">1. Adım: Fotoğraf Yükle</p>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="w-full md:w-1/2 flex flex-col justify-center space-y-3">
-                                {image && <button onClick={resetApp} className="w-full bg-red-500 text-white font-semibold py-3 px-4 rounded-lg hover:bg-red-600 transition duration-300">Yeni Soru Yükle</button>}
-                                <button onClick={handleAnalysis} disabled={isLoading || !selectedSubject || stage === 'analysis_done' || stage === 'solving' || stage === 'solution_done'} className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">3. Adım: Analiz</button>
-                                <button onClick={() => handleSolution(false)} disabled={isLoading || stage !== 'analysis_done'} className="w-full bg-purple-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-600 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">4. Adım: Çözüm</button>
-                                {isLoading && <div className="mt-4 flex flex-col items-center justify-center"><div className="loader"></div><p className="text-gray-600 mt-2">{loadingMessage}</p></div>}
-                            </div>
+                        <div className="w-full flex flex-col items-center justify-center bg-gray-50 p-4 sm:p-6 rounded-lg border-2 border-dashed">
+                            {image ? (
+                                <div className="w-full text-center">
+                                    <img src={image} alt="Yüklenen Soru" className="max-w-full max-h-60 mx-auto rounded-lg shadow-md" />
+                                    <button onClick={resetApp} className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        Yeni Soru Yükle
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 cursor-pointer w-full" onClick={triggerFileSelect}>
+                                    <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                    <p className="mt-2 text-sm font-medium text-gray-700">1. Adım: Fotoğraf Yükle</p>
+                                </div>
+                            )}
+                            <input type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef} className="hidden" />
                         </div>
-
-                        {image && (
+                        
+                        {isLoading && <div className="mt-4 flex flex-col items-center justify-center"><div className="loader"></div><p className="text-gray-600 mt-2">{loadingMessage}</p></div>}
+                        
+                        {stage === 'image_uploaded' && (
                             <div className="w-full pt-4 border-t">
                                 <h2 className="text-lg font-semibold text-center text-gray-700 mb-3">2. Adım: Dersi Seç</h2>
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
@@ -368,37 +253,34 @@
                             </div>
                         )}
 
-                        {(analysis || solution) && (
-                            <div className="space-y-8 mt-6 pt-6 border-t">
-                                {analysis && (<div className="bg-blue-50 p-4 sm:p-5 rounded-lg shadow-sm border border-blue-200"><h2 className="text-lg sm:text-xl font-bold text-blue-800 mb-3">Analiz</h2><UniversalMathRenderer text={analysis} /></div>)}
-                                {simplifiedQuestion && (<div className="bg-yellow-50 p-4 sm:p-5 rounded-lg shadow-sm border border-yellow-200"><h2 className="text-lg sm:text-xl font-bold text-yellow-800 mb-3">Soruyu Basitleştirelim</h2><UniversalMathRenderer text={simplifiedQuestion} /></div>)}
-                                {solution && (<div><h2 className="text-xl sm:text-2xl font-bold text-indigo-800 mb-4 text-center">Çözüm</h2><UniversalMathRenderer text={solution} /></div>)}
-                                {recommendations && (<div className="mt-6"><h2 className="text-xl sm:text-2xl font-bold text-green-700 mb-4 text-center">💡 Sana Tavsiyeler</h2><div className="bg-green-100 p-4 sm:p-5 rounded-lg shadow-sm border border-green-300"><UniversalMathRenderer text={recommendations} /></div></div>)}
-                            </div>
-                        )}
-                        
-                        {showFeedback && (
-                            <div className="mt-6 p-4 bg-purple-100 border border-purple-200 rounded-lg text-center">
-                                <h3 className="font-semibold text-purple-800 mb-3">Çözümü Değerlendir</h3>
-                                <div className="flex justify-center gap-4">
-                                    <button onClick={() => { setFeedbackMessage("Geri bildiriminiz için teşekkürler!"); setShowFeedback(false); setTimeout(() => setFeedbackMessage(''), 3000); }} className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">
-                                        <span>👍</span> Beğendim
-                                    </button>
-                                    <button onClick={() => { setShowFeedback(false); setShowReSolvePrompt(true); }} className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">
-                                        <span>👎</span> Hatalı/Eksik
+                        {stage === 'subject_selected' && (
+                            <div className="w-full pt-4 border-t text-center">
+                                <h2 className="text-lg font-semibold text-gray-700 mb-4">3. Adım: Cevabı Seç ve Çözümü Başlat</h2>
+                                <div className="flex justify-center items-center gap-3 flex-wrap">
+                                    {['A', 'B', 'C', 'D', 'E'].map((option, index) => {
+                                        const colors = ['bg-sky-500 hover:bg-sky-600', 'bg-emerald-500 hover:bg-emerald-600', 'bg-amber-500 hover:bg-amber-600', 'bg-rose-500 hover:bg-rose-600', 'bg-violet-500 hover:bg-violet-600'];
+                                        return (
+                                            <button key={option} onClick={() => startFullProcess(option)} disabled={isLoading} className={`answer-button w-12 h-12 flex items-center justify-center text-white font-bold text-lg rounded-full shadow-lg disabled:bg-gray-400 ${colors[index]}`}>
+                                                {option}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                                <div className="mt-4">
+                                     <button onClick={() => startFullProcess(null)} disabled={isLoading} className="answer-button w-full sm:w-auto px-6 py-2 border-2 border-gray-400 text-gray-600 font-semibold rounded-full hover:bg-gray-200 hover:border-gray-500 disabled:bg-gray-200 disabled:text-gray-400 disabled:border-gray-300">
+                                        Cevabı Bilmiyorum / Şık Yok
                                     </button>
                                 </div>
                             </div>
                         )}
-                        {feedbackMessage && <div className="mt-4 p-3 text-center text-green-800 bg-green-100 rounded-lg">{feedbackMessage}</div>}
-                        {showReSolvePrompt && (
-                             <div className="mt-6 p-4 bg-yellow-100 border border-yellow-200 rounded-lg text-center">
-                                 <p className="font-semibold text-yellow-800 mb-3">Geri bildiriminiz için teşekkürler, artık daha dikkatli olacağım. Soruyu daha dikkatli bir şekilde yeniden çözmemi ister misiniz?</p>
-                                 <div className="flex justify-center gap-4">
-                                     <button onClick={handleReSolve} className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">Evet, yeniden çöz</button>
-                                     <button onClick={() => setShowReSolvePrompt(false)} className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">Hayır, teşekkürler</button>
-                                 </div>
-                             </div>
+
+                        {(stage === 'solution_done') && (
+                            <div className="space-y-8 mt-6 pt-6 border-t">
+                                {analysis && <div className="bg-blue-50 p-4 sm:p-5 rounded-lg shadow-sm border border-blue-200"><h2 className="text-lg sm:text-xl font-bold text-blue-800 mb-3">Analiz</h2><UniversalMathRenderer text={analysis} /></div>}
+                                {simplifiedQuestion && <div className="bg-yellow-50 p-4 sm:p-5 rounded-lg shadow-sm border border-yellow-200"><h2 className="text-lg sm:text-xl font-bold text-yellow-800 mb-3">Soruyu Basitleştirelim</h2><UniversalMathRenderer text={simplifiedQuestion} /></div>}
+                                {solution && <div><h2 className="text-xl sm:text-2xl font-bold text-indigo-800 mb-4 text-center">Çözüm Adımları</h2><UniversalMathRenderer text={solution} /></div>}
+                                {recommendations && <div className="mt-6"><h2 className="text-xl sm:text-2xl font-bold text-green-700 mb-4 text-center">💡 Sana Tavsiyeler</h2><div className="bg-green-100 p-4 sm:p-5 rounded-lg shadow-sm border border-green-300"><UniversalMathRenderer text={recommendations} /></div></div>}
+                            </div>
                         )}
                     </div>
                 </div>
@@ -455,9 +337,10 @@
         const App = () => {
             const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-            if (!isLoggedIn) {
-                return <LoginPage onLoginSuccess={() => setIsLoggedIn(true)} />;
-            }
+            // Geliştirici Modu için girişi atla
+            // if (!isLoggedIn) {
+            //     return <LoginPage onLoginSuccess={() => setIsLoggedIn(true)} />;
+            // }
 
             return (
                  <div className="min-h-screen bg-gray-50 flex items-center justify-center p-2 sm:p-4">
