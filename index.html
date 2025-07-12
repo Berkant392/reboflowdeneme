@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soru Çözücü</title>
+    <!-- Stil ve Kütüphane Dosyaları -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
+        .rainbow-active { position: relative; z-index: 1; background: #1a202c; color: white; border: 2px solid transparent; }
+        .rainbow-active::before { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000); background-size: 400%; border-radius: 0.5rem; z-index: -1; animation: rainbow-move 3s linear infinite; }
+        @keyframes rainbow-move { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
+        .inline-math { display: inline-block; background-color: #eef2ff; padding: 2px 8px; border-radius: 6px; margin: 0 4px; border: 1px solid #c7d2fe; vertical-align: baseline; }
+        .loader { border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .halkali-title { animation: text-color-change 6s linear infinite; }
+        @keyframes text-color-change { 0% {color: #4f46e5;} 25% {color: #d946ef;} 50% {color: #14b8a6;} 75% {color: #f97316;} 100% {color: #4f46e5;} }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
+        const { createRoot } = ReactDOM;
+
+        const credentials = new Map([
+            ['7gT3jP', 'kLp9aV'], ['aBv4kS', '8rZ2mN'], ['cD9xWq', '5jH7fE'],
+            ['test', '1234']
+        ]);
+
+        const UniversalMathRenderer = ({ text }) => {
+            const containerRef = useRef(null);
+            useEffect(() => {
+                if (containerRef.current && text && typeof katex !== 'undefined') {
+                    const contentContainer = document.createElement('div');
+                    const lines = text.split('\n').filter(line => line.trim() !== '');
+                    lines.forEach(line => {
+                        const p = document.createElement('p');
+                        p.className = 'mb-2 text-gray-700 leading-relaxed flex items-baseline flex-wrap';
+                        const parts = line.split(/(\*\*.*?\*\*|\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/g).filter(Boolean);
+                        parts.forEach(part => {
+                            if (part.startsWith('**') && part.endsWith('**')) {
+                                const strong = document.createElement('strong');
+                                strong.className = 'font-bold text-gray-900 mr-2';
+                                strong.textContent = part.slice(2, -2);
+                                p.appendChild(strong);
+                            } else if ((part.startsWith('$$') && part.endsWith('$$')) || (part.startsWith('$') && part.endsWith('$'))) {
+                                const isBlock = part.startsWith('$$');
+                                const mathContent = part.slice(isBlock ? 2 : 1, isBlock ? -2 : -1);
+                                const span = document.createElement('span');
+                                span.className = 'inline-math';
+                                try {
+                                    katex.render(mathContent, span, { throwOnError: false, displayMode: false });
+                                } catch (e) {
+                                    span.textContent = part;
+                                }
+                                p.appendChild(span);
+                            } else {
+                                p.appendChild(document.createTextNode(part));
+                            }
+                        });
+                        contentContainer.appendChild(p);
+                    });
+                    containerRef.current.innerHTML = '';
+                    containerRef.current.appendChild(contentContainer);
+                }
+            }, [text]);
+            return <div ref={containerRef}></div>;
+        };
+        
+        const SoruCozucuPage = () => {
+            const [image, setImage] = useState(null);
+            const [imageBase64, setImageBase64] = useState('');
+            const [selectedSubject, setSelectedSubject] = useState(null);
+            const [analysis, setAnalysis] = useState('');
+            const [simplifiedQuestion, setSimplifiedQuestion] = useState('');
+            const [solution, setSolution] = useState('');
+            const [recommendations, setRecommendations] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const [loadingMessage, setLoadingMessage] = useState('');
+            const [error, setError] = useState('');
+            const [stage, setStage] = useState('upload'); 
+            const [showFeedback, setShowFeedback] = useState(false);
+            const [showReSolvePrompt, setShowReSolvePrompt] = useState(false);
+            const [feedbackMessage, setFeedbackMessage] = useState('');
+            const fileInputRef = useRef(null);
+
+            const subjects = ['Matematik', 'Fizik', 'Kimya', 'Biyoloji', 'Tarih', 'Coğrafya', 'Edebiyat', 'Türkçe'];
+
+            const handleFileChange = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    setImage(URL.createObjectURL(file));
+                    resetSolutionState();
+                    setStage('image_uploaded');
+                    const reader = new FileReader();
+                    reader.onloadend = () => setImageBase64(reader.result.split(',')[1]);
+                    reader.onerror = () => setError('Dosya okunurken bir hata oluştu.');
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const triggerFileSelect = () => fileInputRef.current.click();
+
+            // --- GÜNCELLENMİŞ FONKSİYON ---
+            // Artık doğrudan Roboflow'u değil, kendi sunucusuz fonksiyonumuzu çağırıyor.
+            // API anahtarı bu dosyadan tamamen kaldırıldı.
+            const analyzeImageWithRoboflow = async (base64Image) => {
+                try {
+                    const response = await fetch('/.netlify/functions/analyze-image', {
+                        method: "POST",
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ imageBase64: base64Image })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("Netlify fonksiyon isteği başarısız oldu.");
+                    }
+
+                    const data = await response.json();
+                    
+                    if (data.predictions && data.predictions.length > 0) {
+                        const summary = data.predictions.reduce((acc, pred) => {
+                            acc[pred.class] = (acc[pred.class] || 0) + 1;
+                            return acc;
+                        }, {});
+                        
+                        const summaryText = Object.entries(summary)
+                            .map(([key, value]) => `${value} adet '${key}'`)
+                            .join(', ');
+
+                        return `Bu resimde bir ön analiz yapıldı ve şu nesneler tespit edildi: ${summaryText}.`;
+                    }
+                    return null;
+
+                } catch (error) {
+                    console.error("Netlify fonksiyon analizi başarısız oldu:", error);
+                    return null;
+                }
+            };
+
+            const callGeminiAPI = async (prompt) => {
+                if (!imageBase64) { 
+                    setError('Lütfen önce bir resim dosyası seçin.'); 
+                    return null; 
+                }
+                setIsLoading(true);
+                setError('');
+                
+                const payload = { 
+                    contents: [{ 
+                        role: "user", 
+                        parts: [ { text: prompt }, { inlineData: { mimeType: "image/jpeg", data: imageBase64 } } ] 
+                    }] 
+                };
+                
+                const apiKey = ""; 
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                
+                try {
+                    const response = await fetch(apiUrl, { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify(payload) 
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`API Sunucu Hatası: ${response.status} - ${errorText}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (result.candidates && result.candidates[0]?.content?.parts?.[0]) {
+                        return result.candidates[0].content.parts[0].text;
+                    }
+                    
+                    const errorMessage = result.promptFeedback?.blockReason || JSON.stringify(result);
+                    throw new Error(`API'den geçerli bir yanıt alınamadı: ${errorMessage}`);
+                } catch (err) {
+                    setError(err.message || 'Bilinmeyen bir hata oluştu.');
+                    return null;
+                } finally {
+                    setIsLoading(false);
+                    setLoadingMessage('');
+                }
+            };
+
+            const handleAnalysis = async () => {
+                if(!selectedSubject) { setError('Lütfen önce bir ders seçin.'); return; }
+                setStage('analyzing');
+                
+                setLoadingMessage('Görsel ön analizi yapılıyor...');
+                const roboflowAnalysisText = await analyzeImageWithRoboflow(imageBase64);
+                
+                setLoadingMessage('Detaylı analiz ediliyor...');
+                
+                let prompt = `Sen bir ${selectedSubject} uzmanısın. Bu resimdeki ${selectedSubject} sorusunu analiz et.`;
+
+                if (roboflowAnalysisText) {
+                    prompt += `\n\nSANA EK BİLGİ: Soruyu daha iyi anlaman için bir görüntü işleme modeli tarafından yapılan ön analizin sonuçları şunlardır: "${roboflowAnalysisText}". Lütfen bu bilgiyi de dikkate alarak analizini yap.`;
+                }
+
+                prompt += `\n\nÖzellikle şekilli veya grafikli sorularda, önce görseldeki tüm verileri (noktalar, açılar, uzunluklar, denklemler vb.) dikkatlice çıkar. Analizin kısa, net ve bir lise öğrencisinin anlayacağı dilde olsun. Çözüme dair ipucu verme. Cevabını '### Analiz:' başlığı altında, **Verilenler:** ve **İstenenler:** etiketlerini markdown formatında kalın yazarak oluştur. Maddelerin başına '👉' emojisi koy. **TÜM** matematiksel ifadeleri, sayıları, değişkenleri ve sembolleri istisnasız bir şekilde tek dolar '$...$' veya çift dolar '$$...$$' arasına al. Analizin sonuna mutlaka şu cümleyi ekle: "Analiz tamamlandı. Çözümü görmek için 4. Adım: Çözüm butonuna tıklayabilirsin."`;
+                
+                const analysisResult = await callGeminiAPI(prompt);
+                
+                if (analysisResult) { 
+                    setAnalysis(analysisResult.replace(/### Analiz:/g, '').trim()); 
+                    setStage('analysis_done'); 
+                } else { 
+                    setStage('subject_selected'); 
+                }
+            };
+            
+            const handleSolution = async (isReSolve = false) => {
+                 if(!selectedSubject) { setError('Lütfen önce bir ders seçin.'); return; }
+                setStage('solving');
+                setLoadingMessage(isReSolve ? 'Yeniden çözülüyor...' : 'Çözüm oluşturuluyor...');
+                let prompt = `Sen, YKS ve lise müfredatına yüzde yüz hakim, konuların inceliklerini bilen (örneğin türevde çift katlı kökün ekstremum olmaması gibi) eşi benzeri olmayan bir ${selectedSubject} öğretmenisin. Bu resimdeki soruyu çöz.
+**ÖNCELİK 1: Soruyu Basitleştirme.** İstisnasız her soru için, önce '### Soruyu Basitleştirelim:' başlığı altında sorunun özünü, öğrencinin anlayacağı şekilde yeniden yaz.
+**ÖNCELİK 2: Çözüm.**
+**Kesin Kurallar:**
+1.  **En Pratik Yol:** Soruyu çözmek için lise öğrencisi seviyesine en uygun, en pratik ve en kolay anlaşılır yöntemi seç.
+2.  **Doğruluk:** Çözümün kesinlikle doğru olsun.
+3.  **Anlaşılırlık:** Çözümü adım adım, kısa ve net bir şekilde açıkla. Gereksiz yere uzatma.
+4.  **Format:** Cevabını iki bölümde ver:
+    * '### Çözüm:' başlığı altında metin çözümünü yaz. **TÜM** matematiksel ifadeleri, sayıları, değişkenleri ve sembolleri (örneğin $f'(x)$, $1 \\neq -1$, $x=5$) istisnasız bir şekilde tek dolar '$...$' veya çift dolar '$$...$$' arasına al. Bu kuralın hiçbir istisnası yoktur.
+    * '### Tavsiyeler:' başlığı altında, bu soruyla ilgili 2-3 madde halinde, samimi bir öğretmen gibi, öğrencinin gelecekte benzer soruları çözmesine yardımcı olacak tavsiyeler ver. Tavsiyelerdeki maddelerin başına '💡' emojisi koy.`;
+
+                if(isReSolve) {
+                    prompt = `Daha önceki çözümüm hatalı veya eksik olarak işaretlendi. Az önce yaptığım detaylı analizi dikkate alarak, bu resimdeki ${selectedSubject} sorusunu **önceki hatamı tekrarlamayacak şekilde, çok daha dikkatli, anlaşılır ve basite indirgeyerek** yeniden çöz. Adımları net bir şekilde açıkla ve doğru sonuca ulaş.` + prompt;
+                }
+                
+                const resultText = await callGeminiAPI(prompt);
+                
+                if (resultText) {
+                    const simplifiedPart = resultText.split('### Çözüm:')[0];
+                    const solutionAndRest = resultText.split('### Çözüm:')[1] || '';
+                    
+                    if(simplifiedPart.includes('### Soruyu Basitleştirelim:')){
+                        setSimplifiedQuestion(simplifiedPart.replace('### Soruyu Basitleştirelim:', '').trim());
+                    } else {
+                        setSimplifiedQuestion('');
+                    }
+
+                    const solutionParts = solutionAndRest.split('### Tavsiyeler:');
+                    setSolution(solutionParts[0].trim());
+                    if (solutionParts.length > 1) {
+                        setRecommendations(solutionParts[1].trim());
+                    }
+                    setStage('solution_done'); 
+                    setShowFeedback(true);
+                } else { 
+                    setStage('analysis_done'); 
+                }
+            };
+            
+            const handleReSolve = async () => {
+                setShowReSolvePrompt(false);
+                resetSolutionState(true); 
+                setLoadingMessage('Hata anlaşılıyor, yeniden ve daha detaylı analiz ediliyor...');
+                
+                const reAnalysisPrompt = `Sen bir ${selectedSubject} uzmanısın ve bir önceki çözümün hatalı olarak işaretlendi. Bu resimdeki soruyu şimdi **çok daha dikkatli ve detaylı bir şekilde** yeniden analiz et. Soruda verilen tüm bilgileri, sayısal değerleri, birimleri ve koşulları atlamadan, açık ve net bir şekilde listele. Özellikle şekilli sorularda, şekildeki tüm detayları (açılar, uzunluklar, noktalar) dikkate al. Sorunun tam olarak ne istediğini belirt. **KESİNLİKLE çözüm yapma.** Cevabını '### Analiz:' başlığı altında sun.`;
+                const analysisResult = await callGeminiAPI(reAnalysisPrompt);
+
+                if (analysisResult) {
+                    setAnalysis(analysisResult.replace(/### Analiz:/g, '').trim());
+                    await handleSolution(true);
+                } else {
+                    setError("Yeniden analiz sırasında bir hata oluştu.");
+                    setStage('subject_selected');
+                }
+            };
+            
+            const resetSolutionState = (keepSubject = false) => {
+                setAnalysis('');
+                setSolution('');
+                setSimplifiedQuestion('');
+                setRecommendations('');
+                setError('');
+                setShowFeedback(false);
+                setShowReSolvePrompt(false);
+                setFeedbackMessage('');
+                if (!keepSubject) {
+                    setSelectedSubject(null);
+                }
+            };
+            
+            const resetApp = () => {
+                setImage(null);
+                setImageBase64('');
+                resetSolutionState();
+                setStage('upload');
+                if(fileInputRef.current) fileInputRef.current.value = "";
+            };
+
+            return (
+                <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-4 sm:p-6 md:p-8">
+                    <header className="text-center mb-6">
+                        <p className="halkali-title text-lg font-semibold mb-2">Halkalı Fen Bilimleri Merkezi</p>
+                        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500">Soru Çözücü</h1>
+                        <p className="text-base font-semibold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent mt-2">Berkant Hoca</p>
+                        <p className="text-gray-600 mt-4 text-sm sm:text-base">Sorunun fotoğrafını yükle, dersini seç ve çözümü gör!</p>
+                    </header>
+                    
+                    {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4" role="alert">{error}</div>}
+                    
+                    <div className="flex flex-col gap-6">
+                        <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start">
+                            <div className="w-full md:w-1/2 flex flex-col items-center justify-center bg-gray-50 p-4 sm:p-6 rounded-lg border-2 border-dashed h-full">
+                                <input type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef} className="hidden" />
+                                {image ? (
+                                    <img src={image} alt="Yüklenen Soru" className="max-w-full max-h-48 sm:max-h-60 mx-auto rounded-lg shadow-md" />
+                                ) : (
+                                    <div className="text-center py-8 cursor-pointer w-full" onClick={triggerFileSelect}>
+                                        <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                        <p className="mt-2 text-sm font-medium text-gray-700">1. Adım: Fotoğraf Yükle</p>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="w-full md:w-1/2 flex flex-col justify-center space-y-3">
+                                {image && <button onClick={resetApp} className="w-full bg-red-500 text-white font-semibold py-3 px-4 rounded-lg hover:bg-red-600 transition duration-300">Yeni Soru Yükle</button>}
+                                <button onClick={handleAnalysis} disabled={isLoading || !selectedSubject || stage === 'analysis_done' || stage === 'solving' || stage === 'solution_done'} className="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">3. Adım: Analiz</button>
+                                <button onClick={() => handleSolution(false)} disabled={isLoading || stage !== 'analysis_done'} className="w-full bg-purple-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-600 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">4. Adım: Çözüm</button>
+                                {isLoading && <div className="mt-4 flex flex-col items-center justify-center"><div className="loader"></div><p className="text-gray-600 mt-2">{loadingMessage}</p></div>}
+                            </div>
+                        </div>
+
+                        {image && (
+                            <div className="w-full pt-4 border-t">
+                                <h2 className="text-lg font-semibold text-center text-gray-700 mb-3">2. Adım: Dersi Seç</h2>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                                    {subjects.map(subject => (
+                                        <button key={subject} onClick={() => { setSelectedSubject(subject); setStage('subject_selected'); }} className={`py-2 px-3 rounded-lg font-semibold transition-all duration-200 text-sm sm:text-base ${selectedSubject === subject ? 'rainbow-active' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>{subject}</button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {(analysis || solution) && (
+                            <div className="space-y-8 mt-6 pt-6 border-t">
+                                {analysis && (<div className="bg-blue-50 p-4 sm:p-5 rounded-lg shadow-sm border border-blue-200"><h2 className="text-lg sm:text-xl font-bold text-blue-800 mb-3">Analiz</h2><UniversalMathRenderer text={analysis} /></div>)}
+                                {simplifiedQuestion && (<div className="bg-yellow-50 p-4 sm:p-5 rounded-lg shadow-sm border border-yellow-200"><h2 className="text-lg sm:text-xl font-bold text-yellow-800 mb-3">Soruyu Basitleştirelim</h2><UniversalMathRenderer text={simplifiedQuestion} /></div>)}
+                                {solution && (<div><h2 className="text-xl sm:text-2xl font-bold text-indigo-800 mb-4 text-center">Çözüm</h2><UniversalMathRenderer text={solution} /></div>)}
+                                {recommendations && (<div className="mt-6"><h2 className="text-xl sm:text-2xl font-bold text-green-700 mb-4 text-center">💡 Sana Tavsiyeler</h2><div className="bg-green-100 p-4 sm:p-5 rounded-lg shadow-sm border border-green-300"><UniversalMathRenderer text={recommendations} /></div></div>)}
+                            </div>
+                        )}
+                        
+                        {showFeedback && (
+                            <div className="mt-6 p-4 bg-purple-100 border border-purple-200 rounded-lg text-center">
+                                <h3 className="font-semibold text-purple-800 mb-3">Çözümü Değerlendir</h3>
+                                <div className="flex justify-center gap-4">
+                                    <button onClick={() => { setFeedbackMessage("Geri bildiriminiz için teşekkürler!"); setShowFeedback(false); setTimeout(() => setFeedbackMessage(''), 3000); }} className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">
+                                        <span>👍</span> Beğendim
+                                    </button>
+                                    <button onClick={() => { setShowFeedback(false); setShowReSolvePrompt(true); }} className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">
+                                        <span>👎</span> Hatalı/Eksik
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        {feedbackMessage && <div className="mt-4 p-3 text-center text-green-800 bg-green-100 rounded-lg">{feedbackMessage}</div>}
+                        {showReSolvePrompt && (
+                             <div className="mt-6 p-4 bg-yellow-100 border border-yellow-200 rounded-lg text-center">
+                                 <p className="font-semibold text-yellow-800 mb-3">Geri bildiriminiz için teşekkürler, artık daha dikkatli olacağım. Soruyu daha dikkatli bir şekilde yeniden çözmemi ister misiniz?</p>
+                                 <div className="flex justify-center gap-4">
+                                     <button onClick={handleReSolve} className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">Evet, yeniden çöz</button>
+                                     <button onClick={() => setShowReSolvePrompt(false)} className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">Hayır, teşekkürler</button>
+                                 </div>
+                             </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+        
+        const LoginPage = ({ onLoginSuccess }) => {
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const [loginError, setLoginError] = useState('');
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                if (credentials.has(username) && credentials.get(username) === password) {
+                    onLoginSuccess();
+                } else {
+                    setLoginError('Kullanıcı adı veya şifre hatalı. Halkalı Fen Bilimleri Merkezi öğrencisi iseniz Berkant Hocadan kullanıcı adı ve şifre alabilirsiniz.');
+                }
+            };
+
+            return (
+                <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 px-4">
+                    <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-lg text-center">
+                        <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">
+                            <span className="halkali-title block mb-1">Halkalı Fen Bilimleri Merkezi</span>
+                            <span>Soru Çözücü Uygulamasına Hoş Geldiniz</span>
+                        </h1>
+                        <p className="text-gray-600 mb-6">Lütfen giriş yapınız.</p>
+                        <form onSubmit={handleLogin} className="space-y-4">
+                            <input 
+                                type="text"
+                                placeholder="Kullanıcı Adı"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                className="w-full px-4 py-3 bg-purple-50 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                            <input 
+                                type="password"
+                                placeholder="Şifre"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full px-4 py-3 bg-purple-50 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                            <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition duration-300">
+                                Giriş Yap
+                            </button>
+                        </form>
+                        {loginError && <p className="mt-4 text-sm text-red-600 bg-red-100 p-3 rounded-lg">{loginError}</p>}
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+            if (!isLoggedIn) {
+                return <LoginPage onLoginSuccess={() => setIsLoggedIn(true)} />;
+            }
+
+            return (
+                 <div className="min-h-screen bg-gray-50 flex items-center justify-center p-2 sm:p-4">
+                     <SoruCozucuPage />
+                 </div>
+            );
+        };
+
+        const container = document.getElementById('root');
+        const root = createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>
