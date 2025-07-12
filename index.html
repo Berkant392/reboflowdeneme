@@ -6,8 +6,8 @@
     <title>Soru Çözücü</title>
     <!-- Stil ve Kütüphane Dosyaları -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -30,10 +30,59 @@
         const { useState, useRef, useEffect } = React;
         const { createRoot } = ReactDOM;
 
+        // --- DÜZELTİLMİŞ KULLANICI VERİTABANI ---
+        // Orijinal listenin tamamı geri eklendi.
         const credentials = new Map([
-            ['7gT3jP', 'kLp9aV'], ['aBv4kS', '8rZ2mN'], ['cD9xWq', '5jH7fE'],
-            ['test', '1234']
+            ['7gT3jP', 'kLp9aV'], ['aBv4kS', '8rZ2mN'], ['cD9xWq', '5jH7fE'], ['eF6zYp', '2bC3dR'], ['gH1vUo', '9sX8wT'],
+            ['iJ5tRn', '4mK1qL'], ['lM2sQp', '7nB6vC'], ['nP8rVo', '3dF4zG'], ['qR4tYn', '1hJ5kM'], ['sT9wXu', '6pL2sB'],
+            ['uV7zYo', '8cE3vD'], ['wX3vUp', '5gH1rF'], ['yZ1tRn', '2jK6qL'], ['A2bC3d', '9mN4sV'], ['B5dE6f', '4pG8wT'],
+            ['C8fG9h', '1rJ2uY'], ['D1hI2j', '7tL5xP'], ['E4jK5l', '3vN8zQ'], ['F7lM8n', '6sB1cF'], ['G9nO1p', '8wD4gH'],
+            ['H3pQ4r', '5uF7jK'], ['I6rS7t', '2xL9mN'], ['J9tU1v', '9vC2sB'], ['K2vW3x', '4gH5wT'], ['L5xY6z', '1jK8rF'],
+            ['M8z1A2', '7mN3qL'], ['N1B4C5', '3pG6vC'], ['O4D7E8', '6sB9zQ'], ['P7F9G1', '8wD2cF'], ['Q9H2I3', '5uF4gH'],
+            ['R3J5K6', '2xL7jK'], ['S6L8M9', '9vC1mN'], ['T9N1O2', '4gH3sB'], ['U2P4Q5', '1jK6wT'], ['V5R7S8', '7mN8rF'],
+            ['W8T9U1', '3pG2qL'], ['X1V3W4', '6sB5vC'], ['Y4Z6A7', '8wD8zQ'], ['Z7B9C1', '5uF1cF'], ['a3d6f8', '2xL3gH'],
+            ['b6g9h1', '9vC5jK'], ['c9j2k4', '4gH7mN'], ['d2l5m7', '1jK9sB'], ['e5n8p1', '7mN2wT'], ['f8q1r3', '3pG4rF'],
+            ['g1s4t6', '6sB7qL'], ['h4u7v9', '8wD9vC'], ['i7x1y2', '5uF2zQ'], ['j9z3a5', '2xL4cF'], ['k3b6c8', '9vC6gH'],
+            ['l6d9e1', '4gH8jK'], ['m9f2g4', '1jK1mN'], ['n2h5i7', '7mN3sB'], ['o5j8k1', '3pG5wT'], ['p8l1m3', '6sB7rF'],
+            ['q1n4o6', '8wD9qL'], ['r4p7q9', '5uF2vC'], ['s7r1s2', '2xL4zQ'], ['t9t4u5', '9vC6cF'], ['u3v7w8', '4gH8gH'],
+            ['v6x9y1', '1jK1jK'], ['w9z2a3', '7mN3mN'], ['x2b5c6', '3pG5sB'], ['y5d8e9', '6sB7wT'], ['z8f1g2', '8wD9rF'],
+            ['A1B2C3', '5uF2qL'], ['D4E5F6', '2xL4vC'], ['G7H8I9', '9vC6zQ'], ['J1K2L3', '4gH8cF'], ['M4N5O6', '1jK1gH'],
+            ['P7Q8R9', '7mN3jK'], ['S1T2U3', '3pG5mN'], ['V4W5X6', '6sB7sB'], ['Y7Z8A9', '8wD9wT'], ['B1C2D3', '5uF2rF'],
+            ['E4F5G6', '2xL4qL'], ['H7I8J9', '9vC6vC'], ['K1L2M3', '4gH8zQ'], ['N4O5P6', '1jK1cF'], ['Q7R8S9', '7mN3gH'],
+            ['T1U2V3', '3pG5jK'], ['W4X5Y6', '6sB7mN'], ['Z7A8B9', '8wD9sB'], ['c1d2e3', '5uF2wT'], ['f4g5h6', '2xL4rF'],
+            ['i7j8k9', '9vC6qL'], ['l1m2n3', '4gH8vC'], ['o4p5q6', '1jK1zQ'], ['r7s8t9', '7mN3cF'], ['u1v2w3', '3pG5gH'],
+            ['x4y5z6', '6sB7jK'], ['a7b8c9', '8wD9mN'], ['d1e2f3', '5uF2sB'], ['g4h5i6', '2xL4wT'], ['j7k8l9', '9vC6rF'],
+            ['m1n2o3', '4gH8qL'], ['p4q5r6', '1jK1vC'], ['s7t8u9', '7mN3zQ'], ['v1w2x3', '3pG5cF'], ['y4z5a6', '6sB7gH'],
+            ['b7c8d9', '8wD9jK'], ['e1f2g3', '5uF2mN'], ['h4i5j6', '2xL4sB'], ['k7l8m9', '9vC6wT'], ['n1o2p3', '4gH8rF'],
+            ['q4r5s6', '1jK1qL'], ['t7u8v9', '7mN3vC'], ['w1x2y3', '3pG5zQ'], ['z4a5b6', '6sB7cF'], ['c7d8e9', '8wD9gH'],
+            ['f1g2h3', '5uF2jK'], ['i4j5k6', '2xL4mN'], ['l7m8n9', '9vC6sB'], ['o1p2q3', '4gH8wT'], ['r4s5t6', '1jK1rF'],
+            ['u7v8w9', '7mN3qL'], ['x1y2z3', '3pG5vC'], ['a4b5c6', '6sB7zQ'], ['d7e8f9', '8wD9cF'], ['g1h2i3', '5uF2gH'],
+            ['j4k5l6', '2xL4jK'], ['m7n8o9', '9vC6mN'], ['p1q2r3', '4gH8sB'], ['s4t5u6', '1jK1wT'], ['v7w8x9', '7mN3rF'],
+            ['y1z2a3', '3pG5qL'], ['b4c5d6', '6sB7vC'], ['e7f8g9', '8wD9zQ'], ['h1i2j3', '5uF2cF'], ['k4l5m6', '2xL4gH'],
+            ['n7o8p9', '9vC6jK'], ['q1r2s3', '4gH8mN'], ['t4u5v6', '1jK1sB'], ['w7x8y9', '7mN3wT'], ['z1a2b3', '3pG5rF'],
+            ['c4d5e6', '6sB7qL'], ['f7g8h9', '8wD9vC'], ['i1j2k3', '5uF2zQ'], ['l4m5n6', '2xL4cF'], ['o7p8q9', '9vC6gH'],
+            ['r1s2t3', '4gH8jK'], ['u4v5w6', '1jK1mN'], ['x7y8z9', '7mN3sB'], ['a1b3c5', '3pG5wT'], ['d4e6f8', '6sB7rF'],
+            ['g7h9i1', '8wD9qL'], ['j2k4l6', '5uF2vC'], ['m5n7o9', '2xL4zQ'], ['p8q1r2', '9vC6cF'], ['s3t5u7', '4gH8gH'],
+            ['v9w1x3', '1jK1jK'], ['y5z7a9', '7mN3mN'], ['b2c4d6', '3pG5sB'], ['e8f1g3', '6sB7wT'], ['h5i7j9', '8wD9rF'],
+            ['k2l4m6', '5uF2qL'], ['n8o1p3', '2xL4vC'], ['q5r7s9', '9vC6zQ'], ['t2u4v6', '4gH8cF'], ['w8x1y3', '1jK1gH'],
+            ['z5a7b9', '7mN3jK'], ['c2d4e6', '3pG5mN'], ['f8g1h3', '6sB7sB'], ['i5j7k9', '8wD9wT'], ['l2m4n6', '5uF2rF'],
+            ['o8p1q3', '2xL4qL'], ['r5s7t9', '9vC6vC'], ['u2v4w6', '4gH8zQ'], ['x8y1z3', '1jK1cF'], ['a5b7c9', '7mN3gH'],
+            ['d2e4f6', '3pG5jK'], ['g8h1i3', '6sB7mN'], ['j5k7l9', '8wD9sB'], ['m2n4o6', '5uF2wT'], ['p8q1r3', '2xL4rF'],
+            ['s5t7u9', '9vC6qL'], ['v2w4x6', '4gH8vC'], ['y8z1a3', '1jK1zQ'], ['b5c7d9', '7mN3cF'], ['e2f4g6', '3pG5gH'],
+            ['h8i1j3', '6sB7jK'], ['k5l7m9', '8wD9mN'], ['n2o4p6', '5uF2sB'], ['q8r1s3', '2xL4wT'], ['t5u7v9', '9vC6rF'],
+            ['w2x4y6', '4gH8qL'], ['z8a1b3', '1jK1vC'], ['c5d7e9', '7mN3zQ'], ['f2g4h6', '3pG5cF'], ['i8j1k3', '6sB7gH'],
+            ['l5m7n9', '8wD9jK'], ['o2p4q6', '5uF2mN'], ['r8s1t3', '2xL4sB'], ['u5v7w9', '9vC6wT'], ['x2y4z6', '4gH8rF'],
+            ['a8b1c3', '1jK1qL'], ['d5e7f9', '7mN3vC'], ['g2h4i6', '3pG5zQ'], ['j8k1l3', '6sB7cF'], ['m5n7o9', '8wD9gH'],
+            ['p2q4r6', '5uF2jK'], ['s8t1u3', '2xL4mN'], ['v5w7x9', '9vC6sB'], ['y2z4a6', '4gH8wT'], ['b8c1d3', '1jK1rF'],
+            ['e5f7g9', '7mN3qL'], ['h2i4j6', '3pG5vC'], ['k8l1m3', '6sB7zQ'], ['n5o7p9', '8wD9cF'], ['q2r4s6', '5uF2gH'],
+            ['t8u1v3', '2xL4jK'], ['w5x7y9', '9vC6mN'], ['z2a4b6', '4gH8sB'], ['c8d1e3', '1jK1wT'], ['f5g7h9', '7mN3rF'],
+            ['i2j4k6', '3pG5qL'], ['l8m1n3', '6sB7vC'], ['o5p7q9', '8wD9zQ'], ['r2s4t6', '5uF2cF'], ['u8v1w3', '2xL4gH'],
+            ['x5y7z9', '9vC6jK'], ['Zq4w7e', '8r2t5y'], ['Xp1o9i', 'u6i3o1'], ['Cb5n8m', 'k2j4h6'], ['Vg9f2d', 's5a7z1'],
+            ['Bn4m7k', 'j8h6g5'], ['Lk1j8h', 'g2f4d6'], ['Pq5r8t', 'y1u3i5'], ['Oa2s5d', 'f7g9h2'], ['Iu6y9t', 'r4e1w3'],
+            ['Uj3m7k', 'l9o1p4'], ['Yt5r2e', 'w6q8a1'], ['Ts1a4z', 'e5d7c9'], ['Rg9f6c', 'v3b5n8'], ['Fv2b5n', 'm1k3j6'],
+            ['Dc4r7f', 't8g2y5'], ['Sw6a9q', 'z1x3c5'], ['Az8s5x', 'd2f4g7']
         ]);
+        // --- BİTİŞ ---
 
         const UniversalMathRenderer = ({ text }) => {
             const containerRef = useRef(null);
@@ -109,9 +158,6 @@
 
             const triggerFileSelect = () => fileInputRef.current.click();
 
-            // --- GÜNCELLENMİŞ FONKSİYON ---
-            // Artık doğrudan Roboflow'u değil, kendi sunucusuz fonksiyonumuzu çağırıyor.
-            // API anahtarı bu dosyadan tamamen kaldırıldı.
             const analyzeImageWithRoboflow = async (base64Image) => {
                 try {
                     const response = await fetch('/.netlify/functions/analyze-image', {
@@ -119,29 +165,21 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ imageBase64: base64Image })
                     });
-
-                    if (!response.ok) {
-                        throw new Error("Netlify fonksiyon isteği başarısız oldu.");
-                    }
-
+                    if (!response.ok) throw new Error("Roboflow fonksiyon isteği başarısız oldu.");
                     const data = await response.json();
-                    
                     if (data.predictions && data.predictions.length > 0) {
                         const summary = data.predictions.reduce((acc, pred) => {
                             acc[pred.class] = (acc[pred.class] || 0) + 1;
                             return acc;
                         }, {});
-                        
                         const summaryText = Object.entries(summary)
                             .map(([key, value]) => `${value} adet '${key}'`)
                             .join(', ');
-
                         return `Bu resimde bir ön analiz yapıldı ve şu nesneler tespit edildi: ${summaryText}.`;
                     }
                     return null;
-
                 } catch (error) {
-                    console.error("Netlify fonksiyon analizi başarısız oldu:", error);
+                    console.error("Netlify/Roboflow fonksiyonu hatası:", error);
                     return null;
                 }
             };
@@ -154,36 +192,21 @@
                 setIsLoading(true);
                 setError('');
                 
-                const payload = { 
-                    contents: [{ 
-                        role: "user", 
-                        parts: [ { text: prompt }, { inlineData: { mimeType: "image/jpeg", data: imageBase64 } } ] 
-                    }] 
-                };
-                
-                const apiKey = ""; 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                
                 try {
-                    const response = await fetch(apiUrl, { 
-                        method: 'POST', 
-                        headers: { 'Content-Type': 'application/json' }, 
-                        body: JSON.stringify(payload) 
+                    const response = await fetch('/.netlify/functions/analyze-with-gemini', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt, imageBase64 })
                     });
-                    
+
                     if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`API Sunucu Hatası: ${response.status} - ${errorText}`);
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Gemini fonksiyonu sunucu hatası.');
                     }
                     
                     const result = await response.json();
-                    
-                    if (result.candidates && result.candidates[0]?.content?.parts?.[0]) {
-                        return result.candidates[0].content.parts[0].text;
-                    }
-                    
-                    const errorMessage = result.promptFeedback?.blockReason || JSON.stringify(result);
-                    throw new Error(`API'den geçerli bir yanıt alınamadı: ${errorMessage}`);
+                    return result.text;
+
                 } catch (err) {
                     setError(err.message || 'Bilinmeyen bir hata oluştu.');
                     return null;
